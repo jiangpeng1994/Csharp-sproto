@@ -12,9 +12,11 @@ public class TestWin : MonoBehaviour
     {
         _txtTips = transform.Find("TxtTips").GetComponent<Text>();
         Button btnLogin = transform.Find("BtnLogin").GetComponent<Button>();
+        Button btnTest1 = transform.Find("Test1").GetComponent<Button>();
         Button btnCreate = transform.Find("BtnCreate").GetComponent<Button>();
 
         UIEventTriggerListener.Get(btnLogin.gameObject).onClick = OnClickLogin;
+        UIEventTriggerListener.Get(btnTest1.gameObject).onClick = OnClickTest1;
        
         //监听服务端主推的协议
         NetReceiver.AddHandler<ProtoProtocol.client_user_info>(UserInfo);
@@ -33,36 +35,46 @@ public class TestWin : MonoBehaviour
     {
         //ProtoMsgListener.GetInstance().Remove<Protocol.sc_map_enter>();
     }
-    
-    private void SocketConnected(SprotoTypeBase rsp)
-    {
-        var res = rsp as ProtoSprotoType.logintest.response;
-        var info = new ProtoSprotoType.login.request();
-        info.session = res.session;
-        info.token = res.token;
-        NetCore.Connect(res.ip, (int)res.port, null);
-        NetSender.Send<ProtoProtocol.login>(info);
-    }
+
     /**
      * 发送登录协议
      **/
     private void OnClickLogin(GameObject go, PointerEventData ed)
     {
-        string host = "192.168.186.146";
+        string host = "192.168.199.195";
         int port = 9777;
-        NetCore.Connect(host, port, null);
+        NetCore.Connect(host, port, () => NetCore.Receive());
         _txtTips.text = "login ..";
-        var msg = new ProtoSprotoType.logintest.request();
-        msg.account = "18668067789";
-        msg.password = "666666";
-        NetSender.Send<ProtoProtocol.logintest>(msg, (info) =>
+        NetSender.Send<ProtoProtocol.travelerLogin>(null, (info) =>
         {
-            var rsp = info as ProtoSprotoType.logintest.response;
-            SocketConnected(rsp);
+            var res = info as ProtoSprotoType.travelerLogin.response;
+            NetCore.Connect(res.ip, (int)res.port, ()=>NetCore.Receive());
+
+            var sendInfo = new ProtoSprotoType.login.request();
+            sendInfo.session = res.session;
+            sendInfo.token = res.token;
+            NetSender.Send<ProtoProtocol.login>(sendInfo);
         });
        
     }
 
+    private void OnClickTest1(GameObject go, PointerEventData ed)
+    {
+        var msg = new ProtoSprotoType.GetMoudleInfo.request();
+        msg.moudleBase = new ProtoSprotoType.moudle_base
+        {
+            grade = 3,
+            term = 1,
+            unit = 1,
+            moudleId = 1.2
+        };
+        NetSender.Send<ProtoProtocol.GetMoudleInfo>(msg, (info) =>
+        {
+            var rsp = info as ProtoSprotoType.GetMoudleInfo.response;
+            Debug.Log(rsp.status);
+        });
+
+    }
 
     private SprotoTypeBase RoleOffline(SprotoTypeBase msg)
     {

@@ -54,8 +54,7 @@ public class NetCore
 
         if (TimeoutObject.WaitOne(CONNECT_TIMEOUT, false))
         {
-            Receive();
-            //socketConnected();
+            socketConnected();
         }
         else
         {
@@ -93,10 +92,7 @@ public class NetCore
     private static int MAX_PACK_LEN = (1 << 16) - 1;
     private static void Send(SprotoTypeBase rpc, long? session, int tag)
     {
-        if (!connected || !enabled)
-        {
-            return;
-        }
+        if (!connected || !enabled) return;
 
         Package pkg = new Package();
         pkg.type = tag;
@@ -109,10 +105,7 @@ public class NetCore
 
         sendStream.Seek(0, SeekOrigin.Begin);
         int len = pkg.encode(sendStream);
-        if (rpc != null)
-        {
-            len += rpc.encode(sendStream);
-        }
+        if (rpc != null) len += rpc.encode(sendStream);
 
         byte[] data = sendPack.pack(sendStream.Buffer, len);
         if (data.Length > MAX_PACK_LEN)
@@ -137,10 +130,7 @@ public class NetCore
     private static int receivePosition;
     public static void Receive(IAsyncResult ar = null)
     {
-        if (!connected)
-        {
-            return;
-        }
+        if (!connected) return;
 
         if (ar != null)
         {
@@ -155,13 +145,10 @@ public class NetCore
         int i = recvStream.Position;
         while (receivePosition >= i + 2)
         {
-            int length = (recvStream[i] << 8) | recvStream[i+1];
+            int length = (recvStream[i] << 8) | recvStream[i + 1];
 
             int sz = length + 2;
-            if (receivePosition < i + sz)
-            {
-                break;
-            }
+            if (receivePosition < i + sz) break;
 
             recvStream.Seek(2, SeekOrigin.Current);
 
@@ -193,14 +180,20 @@ public class NetCore
         }
     }
 
+    public static void CheckConnect()
+    {
+        if (!connected) return;
+        if (socket.Available == 0 && socket.Poll(0, SelectMode.SelectRead))
+        {
+            Debug.Log("server disconnect");
+            Disconnect();
+        }
+    }
     public static void Dispatch()
     {
         Package pkg = new Package();
 
-        if (recvQueue.Count > 20)
-        {
-            Debug.Log("recvQueue.Count: " + recvQueue.Count);
-        }
+        if (recvQueue.Count > 20) Debug.Log("recvQueue.Count: " + recvQueue.Count);
 
         while (recvQueue.Count > 0)
         {
@@ -216,10 +209,7 @@ public class NetCore
                 if (rpcReqHandler != null)
                 {
                     SprotoTypeBase rpcRsp = rpcReqHandler(protocol.GenRequest(tag, data, offset));
-                    if (pkg.HasSession)
-                    {
-                        Send(rpcRsp, session, tag);
-                    }
+                    if (pkg.HasSession) Send(rpcRsp, session, tag);
                 }
             }
             else
@@ -233,6 +223,7 @@ public class NetCore
                 }
             }
         }
+        CheckConnect();
     }
 
 }
