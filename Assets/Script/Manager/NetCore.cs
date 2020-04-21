@@ -131,13 +131,13 @@ public class NetCore
     public static void Receive(IAsyncResult ar = null)
     {
         if (!connected) return;
-
         if (ar != null)
         {
             try {
                 receivePosition += socket.EndReceive(ar);
             }
-            catch (Exception e) {
+            catch (SocketException e) {
+                Debug.LogWarning(e.NativeErrorCode.ToString());
                 Debug.LogWarning(e.ToString());
             }
         }
@@ -170,16 +170,18 @@ public class NetCore
             recvStream.Seek(0, SeekOrigin.Begin);
         }
 
-        try {
-            socket.BeginReceive(recvStream.Buffer, receivePosition,
-                recvStream.Buffer.Length - receivePosition,
-                SocketFlags.None, receiveCallback, socket);
+        try
+        {
+            socket.BeginReceive(recvStream.Buffer, receivePosition,recvStream.Buffer.Length - receivePosition,SocketFlags.None, receiveCallback, socket);
         }
-        catch (Exception e) {
+        catch (SocketException e) {
             Debug.LogWarning(e.ToString());
         }
     }
 
+    /// <summary>
+    /// 只能检测服务端断开，不能检测物理类断线
+    /// </summary>
     public static void CheckConnect()
     {
         if (!connected) return;
